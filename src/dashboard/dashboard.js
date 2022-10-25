@@ -7,6 +7,8 @@ const playButton = document.querySelector("#play")
 const totalSongDuration = document.querySelector("#total-song-duration")
 const songDurationCompleted = document.querySelector("#song-duration-completed")
 const songProgress = document.querySelector("#progress")
+const timeline = document.querySelector("#timeline")
+let progressInterval;
 
 const onProfileClick = (event)=>{
     event.stopPropagation();
@@ -107,26 +109,88 @@ const onTrackSelection = (id, event)=>{
 // const timeline = document.querySelector("#")
 //dd
 
+const updateIconForPlayMode = (id)=>{
+    playButton.querySelector("span").textContent = "pause_circle"
+    const playButtonFromTrack = document.querySelector(`#play-track${id}`)
+    playButtonFromTrack.textContent = "⏸"
+    playButtonFromTrack.setAttribute("data-play", "")
 
+}
+
+const onAudioMetaLoaded = (id)=>{
+    totalSongDuration.textContent = `0:${audio.duration.toFixed(0)}`
+   updateIconForPlayMode(id)
+   
+}
+
+const upadateIconForPauseMode = (id)=>{
+    playButton.querySelector("span").textContent = "play_circle"
+    const playButtonFromTrack = document.querySelector(`#play-track${id}`)
+    playButtonFromTrack.textContent = "▶"
+    playButtonFromTrack.removeAttribute("data-play")
+}
+
+const onNowPlayingPlaybuttonClicked = (id)=>{
+    console.log("clickked");
+    if(audio.paused){
+        audio.play()
+        updateIconForPlayMode(id)
+    }else{
+        audio.pause();
+        upadateIconForPauseMode(id)
+       
+    }
+
+}
 
 const onPlayTrack = (event,{image, artistsNames, name, duration_ms, previewUrl, id})=>{
-    console.log("check",image, artistsNames, name, duration_ms, previewUrl, id);
-    // <img class="h-12 w-12" src="https://www.logo.wine/a/logo/Ethereum/Ethereum-Icon-Purple-Logo.wine.svg" alt="img" id="now-playing-img">
-    //         <section class="flex flex-col justify-center">
-    //           <h2 id="now-playing-song" class="text-sm font-semibold text-primary">song title</h2>
-    //           <p class="text-xs" id="now-playing-artist">song artists</p>
 
-    //         </section>
-    const nowPlayingSong = document.querySelector("#now-playing-song")
-    const nowPlayingImg = document.querySelector("#now-playing-img")
-    const nowPlayingArtist = document.querySelector("#now-playing-artist")
-    nowPlayingSong.textContent = name
-    nowPlayingArtist.textContent = artistsNames
-    nowPlayingImg.src = image.url
-    console.log(previewUrl);
+    const buttonWithDataPlay = document.querySelector("[data-play]");
+    if(buttonWithDataPlay?.id === `play-track${id}`){
+        console.log(("dddddddddddddddd"));
+        if(audio.paused){
+            audio.play()
+            updateIconForPlayMode(id)
+        }else{
+            audio.pause()
+            upadateIconForPauseMode(id)
+        }
 
-    audio.src = previewUrl;
-    audio.play()
+    }else{
+        buttonWithDataPlay?.removeAttribute("data-play")
+        console.log("check",image, artistsNames, name, duration_ms, previewUrl, id);
+        // <img class="h-12 w-12" src="https://www.logo.wine/a/logo/Ethereum/Ethereum-Icon-Purple-Logo.wine.svg" alt="img" id="now-playing-img">
+        //         <section class="flex flex-col justify-center">
+        //           <h2 id="now-playing-song" class="text-sm font-semibold text-primary">song title</h2>
+        //           <p class="text-xs" id="now-playing-artist">song artists</p>
+    
+        //         </section>
+        const nowPlayingSong = document.querySelector("#now-playing-song")
+        const nowPlayingImg = document.querySelector("#now-playing-img")
+        const nowPlayingArtist = document.querySelector("#now-playing-artist")
+        nowPlayingSong.textContent = name
+        nowPlayingArtist.textContent = artistsNames
+    
+        nowPlayingImg.src = image.url
+        console.log(previewUrl);
+        
+        audio.src = previewUrl;
+        audio.removeEventListener("loadedmetadata",()=> onAudioMetaLoaded(id))
+        audio.addEventListener("loadedmetadata",()=> onAudioMetaLoaded(id))
+        playButton.addEventListener("click",()=> onNowPlayingPlaybuttonClicked(id))
+        clearInterval(progressInterval)
+        audio.play()
+    
+        progressInterval =  setInterval(()=>{
+            if(audio.paused){
+                return
+            }
+            songDurationCompleted.textContent = `0:${audio.currentTime.toFixed(0)}`
+            songProgress.style.width = `${(audio.currentTime/audio.duration)*100}%`;
+            // songProgress.classList.add = "w-10"
+        },50)
+    }
+
 }
 
 const loadPlaylistsTracks = ({tracks})=>{
@@ -170,11 +234,21 @@ const loadPlaylistsTracks = ({tracks})=>{
 const fillContentForPlaylist = async(playlistId)=>{
     // console.log(playlistId.playlist);
     const playlist = await fetchRequests(`${ENDPOINT.playlist}/${playlistId.playlist}`)
+    const {name, description, images, tracks} = playlist;
+    const coverElement = document.querySelector("#cover-content");
+    coverElement.innerHTML = `
+    <img class="object-contain h-36 w-36" src="${images[0].url}" alt="">
+    <section>
+
+          <h2 id="playlist-name" class="text-4xl">${playlist.name}</h2>
+          <p id="playlist-details">${tracks.items.length} songs</p>
+          </section>`
+
     let pageContent = document.getElementById("page-content");
     pageContent.innerHTML =`
-    <header id="playlist-header" class="mx-8  py-4 z-10 border-secondary border-b-[0.5px] ">
+    <header id="playlist-header" class="mx-8  py-4 z-10 border-secondary border-b-[0.5px] justify-center ">
           <nav>
-            <ul class="grid grid-cols-[50px_1fr_1fr_50px] gap-4 text-secondary ">
+            <ul class="grid grid-cols-[50px_1fr_1fr_50px] gap-4 text-secondary pt-3">
               <li class="justify-self-center" >#</li>
               <li>Title</li>
               <li>Album</li>
@@ -256,6 +330,17 @@ document.addEventListener("DOMContentLoaded", ()=>{
             profileMenu.classList.add("hidden")
         }
     })
+
+    volume.addEventListener("change", ()=>{
+        audio.volume = volume.value/100
+    })
+
+    timeline.addEventListener("click", (e)=>{
+        const timelineWidth = window.getComputedStyle(timeline).width;
+        const timeToSeek = (e.offsetX / parseInt(timelineWidth)) * audio.duration;
+        audio.currentTime = timeToSeek
+        songProgress.style.width = `${(audio.currentTime / audio.duration) *100}%`
+    }, false)
     
     
     window.addEventListener("popstate", (event)=>{
