@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.grid-templates-areas{
+    grid-template-areas: 
+    "sidenav main"
+    "now-playing now-playing";
+}
+
+.grid-templates-areas .content{
+    grid-area: main;
+}
+.grid-templates-areas .sidenav{
+    grid-area: sidenav;
+}
+
+.grid-templates-areas .now-playing{
+    grid-area: now-playing;
+}
+
+.track:hover .track-no,
+.track.selected .track-no {
+    visibility: hidden;
+}
+
+.track:hover .play,
+.track.selected .play{
+    visibility: visible;
+}
+
